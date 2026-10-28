@@ -1,33 +1,47 @@
-# Predictive Maintenance System (Mechanical + AI)
+# Predictive Maintenance System for Milling and Turning (Mechanical + AI)
 
 A software-only system that predicts machine failure, identifies the likely
-failure type and recommends maintenance actions. Built on the AI4I 2020
-Predictive Maintenance Dataset. No hardware or sensors are needed.
+failure type, gives a risk level and recommends maintenance actions.
+No hardware or sensors are needed.
 
 ## Problem
 Machine breakdowns cause downtime, high repair cost and safety risk.
 Predictive maintenance uses data to find problems before the machine fails.
 
 ## Dataset
-- AI4I 2020 Predictive Maintenance Dataset (synthetic, 10,000 rows)
-- Inputs: product type, air temperature, process temperature, rotational
-  speed, torque, tool wear
-- Target: machine failure (about 3.4% of rows are failures)
-- Failure types: TWF, HDF, PWF, OSF (RNF skipped because it is random)
+Augmented version of the AI4I 2020 Predictive Maintenance Dataset
+(synthetic, 10,000 rows, 16 columns). The original rows are kept, and these
+columns were added or changed (see `scripts/augment_dataset.py`):
+
+| Column | Unit | Status |
+|---|---|---|
+| Machine Type (Milling / Turning) | none | New |
+| Cutting force | N | New |
+| Tool flank wear VB | mm | Replaces tool wear in minutes |
+| Quality Type (L / M / H) | none | Renamed from Type |
+
+Failure labels: HDF, PWF and RNF are unchanged. TWF keeps its original rows
+(all with flank wear of at least 0.30 mm). OSF is recalculated from
+flank wear x cutting force. Machine failure is 1 when any failure type is 1
+(355 failures, 3.55%).
+
+All new values are simulated, so results show the method and not real
+machine performance.
 
 ## Features
-- Failure prediction with an XGBoost model (imbalance handled with class weights)
-- Failure type diagnosis (one model per failure type)
+- Failure prediction with a tuned XGBoost model (class imbalance handled
+  with class weights and a tuned threshold of 0.25)
+- Failure type diagnosis: TWF, HDF, PWF and OSF (one model per type)
 - Risk level: Low, Medium or High
-- Rule-based maintenance recommendations from mechanical limits
-- Streamlit dashboard with single machine and bulk CSV prediction
+- Rule-based maintenance advice
+- Streamlit dashboard: single machine and bulk CSV prediction
 
 ## Engineered mechanical features
 | Feature | Formula | Related failure |
 |---|---|---|
 | temp_diff | process temp - air temp | Heat dissipation (HDF) |
-| power | torque x rpm x 2π / 60 | Power failure (PWF) |
-| wear_torque | tool wear x torque | Overstrain (OSF) |
+| power | torque x rpm x 2pi / 60 | Power failure (PWF) |
+| wear_force | flank wear x cutting force | Overstrain (OSF) |
 
 ## Project modules
 1. Setup and data loading
@@ -40,27 +54,31 @@ Predictive maintenance uses data to find problems before the machine fails.
 8. Streamlit dashboard
 9. Packaging and documentation
 
+## Results (test set, 2,000 rows, 71 failures)
+| Metric | Value |
+|---|---|
+| Precision | [your value] |
+| Recall | [your value] |
+| F1-score | [your value] |
+| ROC-AUC | 0.975 |
+| PR-AUC | 0.902 |
 
+Accuracy alone is misleading because only about 3.5% of rows are failures.
 
 ## How to run
-```bash
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-streamlit run app/app.py
-```
+    python -m venv venv
+    venv\Scripts\activate
+    pip install -r requirements.txt
+    streamlit run app/app.py
 
 ## Limitations
-- The dataset is synthetic, so real machines may behave differently.
-- The test set has only a few dozen failures, so scores can vary.
-- There is no time-series data, so remaining useful life is not predicted.
-- Risk bands (30% and 60%) are fixed and not calibrated.
+- The dataset is synthetic, and the new columns are simulated
+- Only 71 failures in the test set, so scores can vary
+- No time-series data, so remaining useful life is not predicted
+- Probabilities are very close to 0 or 1 because the data follows exact rules
 
 ## Future scope
-- Train on real machine data
-- Add remaining useful life prediction with time-series data
-- Add SHAP explanations
-- Deploy as an API
+Real machine data, remaining useful life, SHAP explanations, an API.
 
 ## Tech stack
 Python, pandas, NumPy, scikit-learn, XGBoost, Matplotlib, Seaborn, Streamlit
